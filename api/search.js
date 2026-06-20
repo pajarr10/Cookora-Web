@@ -1,5 +1,6 @@
 const CookpadScraper = require('../cookpad-search');
 const cheerio = require('cheerio');
+const { logEvent } = require('../lib/analytics');
 
 const scraper = new CookpadScraper();
 
@@ -141,6 +142,7 @@ module.exports = async function handler(req, res) {
   }
 
   try {
+    logEvent(req, 'search', { query: q }).catch(() => {});
     // Search dibuat lite supaya tidak timeout di Vercel; detail diambil saat card diklik via /api/detail.
     const result = await searchLite(q, 12);
     res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=86400');

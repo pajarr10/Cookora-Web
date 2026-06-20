@@ -1,4 +1,5 @@
 const CookpadScraper = require('../cookpad-search');
+const { logEvent } = require('../lib/analytics');
 
 const scraper = new CookpadScraper();
 
@@ -30,6 +31,7 @@ module.exports = async function handler(req, res) {
   }
 
   try {
+    logEvent(req, 'detail', { url }).catch(() => {});
     const result = await scraper.getDetail(url);
     res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
     return res.status(result.success ? 200 : 502).json({
