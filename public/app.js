@@ -68,7 +68,7 @@ async function searchRecipes(query) {
   if (!q) return;
 
   resultsEl.innerHTML = '';
-  setStatus('Sedang scraping resep... tunggu sebentar ya 🍳');
+  setStatus('Sebertar ya lagi nyari... tunggu sebentar yaa');
 
   try {
     const response = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
@@ -206,6 +206,6 @@ document.addEventListener('keydown', (event) => {
 
 // Pencarian awal agar halaman terasa hidup.
 window.addEventListener('load', () => {
-  input.value = 'nasi goreng';
+  input.value = 'tiramisu';
   searchRecipes(input.value);
 });
