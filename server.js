@@ -7,11 +7,16 @@
 const express = require('express');
 const https = require('https');
 const path = require('path');
+const fs = require('fs');
 const CookpadScraper = require('./cookpad-search');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const scraper = new CookpadScraper();
+
+const DATA_DIR = path.join(__dirname, 'data');
+const ANALYTICS_FILE = path.join(DATA_DIR, 'analytics.jsonl');
+fs.mkdirSync(DATA_DIR, { recursive: true });
 
 // Simple in-memory cache agar hemat request dan ringan di Termux.
 const CACHE_TTL_MS = Number(process.env.CACHE_TTL_MS || 10 * 60 * 1000);
@@ -49,9 +54,113 @@ function publicPayload(payload) {
   };
 }
 
+
+function getClientIp(req) {
+  return String(
+    req.headers['cf-connecting-ip'] ||
+    req.headers['x-real-ip'] ||
+    req.headers['x-forwarded-for'] ||
+    req.socket.remoteAddress ||
+    ''
+  ).split(',')[0].trim();
+}
+
+function getVisitorId(req) {
+  return String(req.headers['x-cookora-visitor'] || req.body?.visitorId || req.query.visitorId || '').slice(0, 80);
+}
+
+function logEvent(req, type, extra = {}) {
+  const entry = {
+    time: new Date().toISOString(),
+    type,
+    visitorId: getVisitorId(req),
+    ip: getClientIp(req),
+    method: req.method,
+    path: req.path,
+    userAgent: String(req.headers['user-agent'] || '').slice(0, 240),
+    referer: String(req.headers.referer || req.headers.referrer || '').slice(0, 240),
+    ...extra
+  };
+
+  fs.appendFile(ANALYTICS_FILE, JSON.stringify(entry) + '\n', (err) => {
+    if (err) console.error('Analytics log error:', err.message);
+  });
+}
+
+function readAnalytics(limit = 1000) {
+  if (!fs.existsSync(ANALYTICS_FILE)) return [];
+  const raw = fs.readFileSync(ANALYTICS_FILE, 'utf8').trim();
+  if (!raw) return [];
+  return raw.split('\n').slice(-limit).map((line) => {
+    try { return JSON.parse(line); } catch { return null; }
+  }).filter(Boolean);
+}
+
+function summarizeAnalytics(events) {
+  const uniqueVisitors = new Set(events.map(e => e.visitorId || e.ip).filter(Boolean));
+  const searches = events.filter(e => e.type === 'search');
+  const pageviews = events.filter(e => e.type === 'pageview');
+  const details = events.filter(e => e.type === 'detail');
+  const topSearches = {};
+  searches.forEach((e) => {
+    const q = String(e.query || '').toLowerCase().trim();
+    if (q) topSearches[q] = (topSearches[q] || 0) + 1;
+  });
+
+  return {
+    totalEvents: events.length,
+    uniqueVisitors: uniqueVisitors.size,
+    pageviews: pageviews.length,
+    searches: searches.length,
+    detailOpens: details.length,
+    topSearches: Object.entries(topSearches)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 20)
+      .map(([query, count]) => ({ query, count }))
+  };
+}
+
+function requireAdmin(req, res, next) {
+  const adminKey = process.env.ADMIN_KEY;
+  if (!adminKey) {
+    return res.status(503).json(publicPayload({
+      success: false,
+      error: 'ADMIN_KEY belum diset. Jalankan: ADMIN_KEY=passwordku npm start'
+    }));
+  }
+  const key = String(req.query.key || req.headers['x-admin-key'] || '');
+  if (key !== adminKey) {
+    return res.status(401).json(publicPayload({ success: false, error: 'Admin key salah.' }));
+  }
+  next();
+}
+
 app.disable('x-powered-by');
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+app.post('/api/track', (req, res) => {
+  const type = String(req.body?.type || 'pageview').slice(0, 40);
+  logEvent(req, type, {
+    page: String(req.body?.page || '').slice(0, 240),
+    title: String(req.body?.title || '').slice(0, 160)
+  });
+  res.json(publicPayload({ success: true }));
+});
+
+app.get('/api/analytics', requireAdmin, (req, res) => {
+  const limit = Math.min(Number(req.query.limit || 1000), 10000);
+  const events = readAnalytics(limit);
+  res.json(publicPayload({
+    success: true,
+    summary: summarizeAnalytics(events),
+    events: events.reverse()
+  }));
+});
+
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
 
 app.get('/api/health', (req, res) => {
   res.json(publicPayload({ success: true, status: 'ok' }));
@@ -65,6 +174,8 @@ app.get('/api/search', asyncHandler(async (req, res) => {
       error: 'Parameter q wajib diisi. Contoh: /api/search?q=nasi%20goreng'
     }));
   }
+
+  logEvent(req, 'search', { query: q });
 
   const key = `search:${q.toLowerCase()}`;
   const cached = cacheGet(key);
@@ -98,6 +209,8 @@ app.get('/api/detail', asyncHandler(async (req, res) => {
   if (!parsed.hostname.endsWith('cookpad.com')) {
     return res.status(400).json(publicPayload({ success: false, error: 'Hanya URL Cookpad yang diizinkan.' }));
   }
+
+  logEvent(req, 'detail', { url });
 
   const key = `detail:${url}`;
   const cached = cacheGet(key);
