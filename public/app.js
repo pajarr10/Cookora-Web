@@ -7,6 +7,34 @@ const modalContent = document.querySelector('#modalContent');
 
 let latestResults = [];
 
+const visitorId = (() => {
+  const key = 'cookoraVisitorId';
+  let id = localStorage.getItem(key);
+  if (!id) {
+    id = `v_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    localStorage.setItem(key, id);
+  }
+  return id;
+})();
+
+function trackedFetch(url, options = {}) {
+  return fetch(url, {
+    ...options,
+    headers: {
+      ...(options.headers || {}),
+      'x-cookora-visitor': visitorId
+    }
+  });
+}
+
+function trackEvent(type, data = {}) {
+  trackedFetch('/api/track', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type, visitorId, page: location.pathname + location.hash, title: document.title, ...data })
+  }).catch(() => {});
+}
+
 function escapeHTML(value = '') {
   return String(value)
     .replaceAll('&', '&amp;')
@@ -71,7 +99,7 @@ async function searchRecipes(query) {
   setStatus('Sedang scraping resep... tunggu sebentar ya 🍳');
 
   try {
-    const response = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+    const response = await trackedFetch(`/api/search?q=${encodeURIComponent(q)}`);
     const payload = await response.json();
 
     if (!response.ok || !payload.success) {
@@ -90,7 +118,7 @@ async function ensureDetail(recipe) {
   const hasDetail = (recipe.bahan_bahan && recipe.bahan_bahan.length) || (recipe.langkah_langkah && recipe.langkah_langkah.length);
   if (hasDetail || !recipe.url) return recipe;
 
-  const response = await fetch(`/api/detail?url=${encodeURIComponent(recipe.url)}`);
+  const response = await trackedFetch(`/api/detail?url=${encodeURIComponent(recipe.url)}`);
   const payload = await response.json();
   if (!response.ok || !payload.success) return recipe;
   return { ...recipe, ...payload.data };
@@ -206,6 +234,7 @@ document.addEventListener('keydown', (event) => {
 
 // Pencarian awal agar halaman terasa hidup.
 window.addEventListener('load', () => {
+  trackEvent('pageview');
   input.value = 'nasi goreng';
   searchRecipes(input.value);
 });
