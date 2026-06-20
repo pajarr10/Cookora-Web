@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Cookora by Pajar - pencari resep makanan berbasis scraping Cookpad." />
+  <title>Cookora — Pencari Resep Makanan</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="noise" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <a class="brand" href="#home" aria-label="Cookora Home">
+      <span class="brand-mark">🍳</span>
+      <span>Cookora</span>
+    </a>
+    <nav class="navlinks" aria-label="Navigasi utama">
+      <a href="#search">Cari</a>
+      <a href="#about">About</a>
+      <a href="https://github.com/pajarr10" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+  </header>
+
+  <main id="home">
+    <section class="hero section-pad">
+      <div class="hero-copy">
+        <p class="pill pink">Neo Recipe Finder • by Pajar</p>
+        <h1>Temukan resep favoritmu dengan gaya <span>pop-art</span>.</h1>
+        <p class="lead">Cookora membantu kamu mencari inspirasi masakan dari Cookpad memakai backend scraping ringan berbasis Node.js, Express, Cheerio, dan tanpa API resmi.</p>
+        <div class="hero-actions">
+          <a class="btn primary" href="#search">Mulai Cari</a>
+          <a class="btn secondary" href="#about">Tentang Web</a>
+        </div>
+      </div>
+
+      <div class="hero-card" aria-label="Preview fitur Cookora">
+        <div class="window-bar">
+          <span></span><span></span><span></span>
+          <b>cookora.app</b>
+        </div>
+        <div class="code-food">
+          <p><b class="c-pink">const</b> mood = <span>'lapar'</span>;</p>
+          <p><b class="c-blue">search</b>(<span>'ayam geprek'</span>)</p>
+          <p>→ 10 resep siap dimasak ✨</p>
+        </div>
+        <div class="mini-grid">
+          <span>🍜 Mie</span><span>🍛 Nasi</span><span>🥗 Salad</span><span>🍰 Kue</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="search" class="search-section section-pad">
+      <div class="section-title">
+        <p class="pill cyan">Search Station</p>
+        <h2>Mau masak apa hari ini?</h2>
+        <p>Ketik nama makanan atau bahan. Contoh: <b>nasi goreng</b>, <b>ayam kecap</b>, <b>seblak</b>.</p>
+      </div>
+
+      <form id="searchForm" class="search-box">
+        <label class="sr-only" for="queryInput">Cari resep</label>
+        <input id="queryInput" name="q" type="search" placeholder="Cari resep... misal: rendang" autocomplete="off" required />
+        <button class="btn primary" type="submit">Cari Resep 🔎</button>
+      </form>
+
+      <div class="quick-tags" aria-label="Pencarian cepat">
+        <button data-query="nasi goreng">nasi goreng</button>
+        <button data-query="ayam kecap">ayam kecap</button>
+        <button data-query="seblak">seblak</button>
+        <button data-query="brownies">brownies</button>
+      </div>
+
+      <div id="status" class="status" role="status" aria-live="polite"></div>
+      <div id="results" class="recipe-grid"></div>
+    </section>
+
+    <section id="about" class="about section-pad">
+      <div class="about-card">
+        <p class="pill yellow">About Cookora</p>
+        <h2>Cookora dibuat untuk eksplor resep yang cepat, ringan, dan colorful.</h2>
+        <p>Web ini dikembangkan oleh <b>Pajar</b>. Backend memakai Express dan scraper Cheerio sehingga lebih ramah untuk Termux Android karena tidak membutuhkan browser headless seperti Puppeteer.</p>
+        <div class="about-buttons">
+          <a class="btn dark" href="https://github.com/pajarr10" target="_blank" rel="noopener">GitHub Pajar</a>
+          <a class="btn green" href="https://pixajar.my.id" target="_blank" rel="noopener">Website Pajar</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div>
+      <b>🍳 Cookora</b>
+      <span>Developer: Pajar</span>
+    </div>
+    <div class="footer-links">
+      <a href="https://github.com/pajarr10" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://pixajar.my.id" target="_blank" rel="noopener">Website</a>
+    </div>
+  </footer>
+
+  <div id="modal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close="true"></div>
+    <article class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <button class="modal-close" type="button" data-close="true" aria-label="Tutup detail resep">×</button>
+      <div id="modalContent"></div>
+    </article>
+  </div>
+
+  <template id="emptyImageTemplate">
+    <div class="empty-img">🍽️</div>
+  </template>
+
+  <script src="./app.js" defer></script>
+</body>
+</html>
